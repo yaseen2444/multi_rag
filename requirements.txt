@@ -6,4 +6,5 @@ chromadb
 streamlit
 transformers
 torch
+pypdf
 -e.
