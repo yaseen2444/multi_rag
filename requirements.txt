@@ -3,4 +3,7 @@ numpy
 langchain
 fastapi
 chromadb
+streamlit
+transformers
+torch
 -e.
