@@ -1,0 +1,6 @@
+pandas
+numpy
+langchain
+fastapi
+chromadb
+-e.
