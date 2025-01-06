@@ -46,5 +46,4 @@ class DataIngestion:
             return storage_path
 
         except Exception as e:
-            logging.error(f"Error in file ingestion: {str(e)}")
             raise CustomException(e,sys)
