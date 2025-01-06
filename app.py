@@ -1,8 +1,8 @@
 import streamlit as st
-import requests
-import tempfile
 import os
-
+from src.components.data_ingestion import DataIngestion
+from src.exception import CustomException
+from src.logger import logging
 
 def main():
     st.title("PDF RAG Application with LangChain and Llama")
@@ -11,44 +11,26 @@ def main():
     pipeline_id = st.sidebar.text_input("Enter Pipeline ID:", key="pipeline_input")
     uploaded_file = st.sidebar.file_uploader("Upload a PDF Document", type=["pdf"])
 
-    if "pipeline_id" not in st.session_state:
-        st.session_state.pipeline_id = None
-
     if uploaded_file and pipeline_id:
-        st.write("### Uploaded Document")
-        st.write(f"**File Name:** {uploaded_file.name}")
+        try:
+            st.write("### Uploaded Document")
+            st.write(f"**File Name:** {uploaded_file.name}")
 
-        if st.button("Create RAG Chatbot"):
-            files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
-            response = requests.post(
-                f"http://localhost:8080/create_pipeline/{pipeline_id}",
-                files=files
-            )
-
-            if response.status_code == 200:
-                st.session_state.pipeline_id = pipeline_id
-                st.success("RAG chatbot created successfully!")
-            else:
-                st.error(f"Failed to create RAG chatbot: {response.text}")
-
-    if st.session_state.pipeline_id:
-        st.write("### Chat with your document")
-        query = st.text_input("Enter your question:")
-
-        if query:
-            response = requests.post(
-                f"http://localhost:8080/query/{st.session_state.pipeline_id}",
-                json={"question": query}
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                st.write("**Answer:**", result["answer"])
-
-                with st.expander("View Sources"):
-                    for i, source in enumerate(result["sources"], 1):
-                        st.write(f"Source {i}:", source)
-
+            if st.button("Create RAG Chatbot"):
+                with st.spinner("Processing document..."):
+                    data_ingestion = DataIngestion()
+                    storage_path = data_ingestion.initiate_ingestion(
+                        file=uploaded_file,
+                        pipeline_id=int(pipeline_id)
+                    )
+                    if storage_path:
+                        st.success(f"Document processed and stored successfully at: {storage_path}")
+                    else:
+                        st.error("Failed to process document")
+        except CustomException as e:
+            st.error(f"Error: {str(e)}")
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
