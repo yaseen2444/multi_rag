@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from src.components.data_ingestion import DataIngestion
+from src.components.data_transformation import DataTransformation
 from src.exception import CustomException
 from src.logger import logging
 
@@ -19,12 +20,15 @@ def main():
             if st.button("Create RAG Chatbot"):
                 with st.spinner("Processing document..."):
                     data_ingestion = DataIngestion()
+                    data_transform=DataTransformation()
                     storage_path = data_ingestion.initiate_ingestion(
                         file=uploaded_file,
                         pipeline_id=int(pipeline_id)
                     )
+                    x,y=data_transform.process_pdf(storage_path)
                     if storage_path:
                         st.success(f"Document processed and stored successfully at: {storage_path}")
+                        st.write(x[0])
                     else:
                         st.error("Failed to process document")
         except CustomException as e:
