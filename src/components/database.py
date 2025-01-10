@@ -25,7 +25,6 @@ class DataBase:
     def __init__(self):
         """Initialize database with configuration"""
         self.data_base = DataBaseConfig()
-        # Ensure base directory exists
         os.makedirs(self.data_base.PERSIST_DIR, exist_ok=True)
         logging.info(f"Initialized database with persist directory: {self.data_base.PERSIST_DIR}")
 
@@ -44,7 +43,7 @@ class DataBase:
         os.makedirs(persist_path, exist_ok=True)
         return persist_path
 
-    def create_database(self, pipeline_id: int, docs, embeddings: Optional[HuggingFaceEmbeddings] = None):
+    def create_database(self, pipeline_id: int, docs, embeddings: Optional[HuggingFaceEmbeddings]):
         """
         Create a new vector database
 
@@ -62,14 +61,10 @@ class DataBase:
         try:
             final_path = self.get_persist_dir(pipeline_id)
 
-            if not validate_file_path(final_path):
-                os.makedirs(final_path,exist_ok=True)
-                logging.info(f"Created new directory at {final_path}")
-
             logging.info("Creating the database")
             vectorstore = Chroma.from_documents(
                 documents=docs,
-                embedding=embeddings or DataTransformation().transform_data(),
+                embedding=embeddings,
                 persist_directory=final_path
             )
             vectorstore.persist()
@@ -80,7 +75,7 @@ class DataBase:
             logging.error(f"Error in database creation: {str(e)}")
             raise CustomException(e, sys)
 
-    def load_database(self, pipeline_id: int, embeddings: Optional[HuggingFaceEmbeddings] = None):
+    def load_database(self, pipeline_id: int, embeddings: Optional[HuggingFaceEmbeddings]):
         """
         Load an existing vector database
 
@@ -98,14 +93,11 @@ class DataBase:
         try:
             persist_path = self.get_persist_dir(pipeline_id)
 
-            if not validate_file_path(persist_path):
-                logging.error(f"Database not found at {persist_path}")
-                raise FileNotFoundError(f"No database found for pipeline {pipeline_id}")
 
             logging.info(f"Loading database for pipeline {pipeline_id}")
             vector_store = Chroma(
                 persist_directory=persist_path,
-                embedding_function=embeddings or DataTransformation().transform_data()
+                embedding_function=embeddings
             )
             logging.info("Database loaded successfully")
             return vector_store
@@ -114,7 +106,7 @@ class DataBase:
             logging.error(f"Error in database loading: {str(e)}")
             raise CustomException(e, sys)
 
-    def add_data(self, additional_docs, pipeline_id: int, embeddings: Optional[HuggingFaceEmbeddings] = None):
+    def add_data(self, additional_docs, pipeline_id: int, embeddings: Optional[HuggingFaceEmbeddings]):
         """
         Add new documents to existing database
 
@@ -163,7 +155,6 @@ class DataBase:
                 logging.warning(f"No database found at {persist_path}")
                 return False
 
-            # Use shutil.rmtree instead of os.remove for directories
             shutil.rmtree(persist_path)
             logging.info(f"Successfully removed database for pipeline {pipeline_id}")
             return True
@@ -173,20 +164,4 @@ class DataBase:
             raise CustomException(e, sys)
 
 
-if __name__ =="__main__":
-    documents=["this is me"]
-    new_docs=['this is ypou']
-    # Initialize database
-    db = DataBase()
 
-    # Create new database
-    #vectorstore = db.create_database(pipeline_id=111, docs=documents)
-
-    # Load existing database
-    loaded_store = db.load_database(pipeline_id=21)
-
-    # Add new documents
-    #updated_store = db.add_data(additional_docs=new_docs, pipeline_id=1)
-
-    # Remove database
-    success = db.remove_database(pipeline_id=1)
