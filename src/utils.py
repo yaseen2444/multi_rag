@@ -2,7 +2,7 @@ import os
 import sys
 from src.logger import logging
 from src.exception import CustomException
-
+KEYS_FILE=os.path.join('artifacts','keys.txt')
 
 def validate_file_path(file_path: str) -> bool:
     """
@@ -19,3 +19,8 @@ def validate_file_path(file_path: str) -> bool:
             os.path.isfile(file_path) and
             file_path.lower().endswith('.pdf')
     )
+
+def pipeline_exists(pipeline_id: str) -> bool:
+    """Check if a pipeline exists in the keys file."""
+    with open(KEYS_FILE, 'r') as file:
+        return any(line.strip() == pipeline_id for line in file)
