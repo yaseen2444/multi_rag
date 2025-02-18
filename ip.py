@@ -8,10 +8,11 @@ from src.exception import CustomException
 from src.logger import logging
 import sys
 import time
+import traceback
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="RAG Assistant",
+    page_title="RAG MATRIX",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -33,7 +34,7 @@ st.markdown("""
         .success-message {
             padding: 1rem;
             border-radius: 5px;
-            background-color: #D4EDDA;
+            background-color: #EEF2F7;
             color: #155724;
             margin: 1rem 0;
         }
@@ -53,90 +54,115 @@ st.markdown("""
         .centered-header {
             text-align: center;
             padding: 20px;
-            background: linear-gradient(90deg, #1E88E5, #1565C0);
+            background: linear-gradient(90deg, #EEF2F7, #1565C0);
             color: white;
             border-radius: 10px;
             margin-bottom: 30px;
         }
+        .chat-container {
+            margin-bottom: 60px;
+            height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+        .debug-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
     </style>
 """, unsafe_allow_html=True)
-
-# Initialize pipelines
-pipeline = Pipeline()
-predict_pipeline = PredictPipeline()
 
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'current_pipeline_id' not in st.session_state:
     st.session_state.current_pipeline_id = None
+if 'debug_mode' not in st.session_state:
+    st.session_state.debug_mode = False
 
+try:
+    # Initialize pipelines with error handling
+    pipeline = Pipeline()
+    predict_pipeline = PredictPipeline()
+    initialization_success = True
+except Exception as e:
+    initialization_success = False
+    initialization_error = str(e)
+    logging.error(f"Failed to initialize pipelines: {str(e)}")
 
 def process_document(uploaded_file, pipeline_id, action):
     """Process the uploaded PDF document and perform specified action."""
     try:
+        logging.info(f"Processing document: action={action}, pipeline_id={pipeline_id}")
         result = 0
         if action == "create":
             result = pipeline.create_pipeline(pipeline_id=int(pipeline_id), docs_file=uploaded_file)
         elif action == "remove":
             result = pipeline.delete_pipeline(int(pipeline_id))
+        logging.info(f"Document processing result: {result}")
         return result
     except Exception as e:
+        logging.error(f"Error in process_document: {str(e)}")
         raise CustomException(e, sys)
 
-
-def chat_interface():
-    """Handle chat interface and query processing."""
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-            if message.get("sources"):
-                with st.expander("Sources"):
-                    for idx, source in enumerate(message["sources"], 1):
-                        st.markdown(f"**Source {idx}:**\n{source}")
-
-    # Chat input
-    if prompt := st.chat_input("Ask your question..."):
-        # Add user message
+def handle_chat(prompt):
+    """Handle chat message processing."""
+    try:
+        logging.info(f"Processing chat prompt: {prompt}")
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        # Get pipeline ID from session state
+        
         if not st.session_state.current_pipeline_id:
-            with st.chat_message("assistant"):
-                st.write("Please select a pipeline ID first.")
-            st.session_state.messages.append({"role": "assistant", "content": "Please select a pipeline ID first."})
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": "Please select a pipeline ID first."
+            })
             return
 
-        # Process query
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = predict_pipeline.query_pipeline(int(st.session_state.current_pipeline_id), prompt)
-                if response == -1:
-                    message = "Pipeline not found. Please check the pipeline ID."
-                    st.write(message)
-                    st.session_state.messages.append({"role": "assistant", "content": message})
-                else:
-                    st.write(response["answer"])
-                    if response.get("sources"):
-                        with st.expander("Sources"):
-                            for idx, source in enumerate(response["sources"], 1):
-                                st.markdown(f"**Source {idx}:**\n{source}")
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": response["answer"],
-                        "sources": response.get("sources", [])
-                    })
-
+        with st.spinner("Processing your question..."):
+            # Add debug information
+            if st.session_state.debug_mode:
+                st.info(f"Sending query to pipeline {st.session_state.current_pipeline_id}")
+                
+            response = predict_pipeline.query_pipeline(int(st.session_state.current_pipeline_id), prompt)
+            
+            if response == -1:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "Pipeline not found. Please check the pipeline ID."
+                })
+            else:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response["answer"],
+                    "sources": response.get("sources", [])
+                })
+                
+            logging.info("Chat response processed successfully")
+            
+    except Exception as e:
+        error_msg = f"Error processing chat: {str(e)}\n{traceback.format_exc()}"
+        logging.error(error_msg)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": f"I encountered an error while processing your request. Error details: {str(e)}"
+        })
 
 def main():
     # Header
-    st.markdown('<div class="centered-header"><h1>🤖 RAG Assistant</h1></div>', unsafe_allow_html=True)
+    st.markdown('<div class="centered-header"><h1>🤖 RAG MATRIX</h1></div>', unsafe_allow_html=True)
 
-    # Sidebar
+    if not initialization_success:
+        st.error(f"Failed to initialize the application: {initialization_error}")
+        return
+
+    # Debug mode toggle in sidebar
     with st.sidebar:
+        st.session_state.debug_mode = st.checkbox("Debug Mode", value=st.session_state.debug_mode)
+        st.divider()
+
         st.header("Pipeline Management")
 
         # Create Pipeline Section
@@ -148,6 +174,8 @@ def main():
                 if uploaded_file and pipeline_id:
                     try:
                         with st.spinner("Creating pipeline..."):
+                            if st.session_state.debug_mode:
+                                st.info(f"Creating pipeline with ID: {pipeline_id}")
                             result = process_document(uploaded_file, pipeline_id, "create")
                             if result == 1:
                                 st.success("Pipeline created successfully!")
@@ -156,7 +184,7 @@ def main():
                             else:
                                 st.error("Failed to create pipeline.")
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        st.error(f"Error creating pipeline: {str(e)}")
                 else:
                     st.warning("Please provide both Pipeline ID and PDF document.")
 
@@ -167,6 +195,8 @@ def main():
                 if delete_pipeline_id:
                     try:
                         with st.spinner("Deleting pipeline..."):
+                            if st.session_state.debug_mode:
+                                st.info(f"Deleting pipeline with ID: {delete_pipeline_id}")
                             result = process_document(None, delete_pipeline_id, "remove")
                             if result == 1:
                                 st.success("Pipeline deleted successfully!")
@@ -175,7 +205,7 @@ def main():
                             else:
                                 st.error("Pipeline not found.")
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        st.error(f"Error deleting pipeline: {str(e)}")
                 else:
                     st.warning("Please provide a Pipeline ID.")
 
@@ -183,13 +213,17 @@ def main():
     col1, col2 = st.columns([2, 1])
 
     with col2:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+        # st.markdown('<div class="info-box">', unsafe_allow_html=True)
         st.subheader("Active Pipeline")
 
-        # Use callback for pipeline ID change
         def on_pipeline_change():
-            st.session_state.current_pipeline_id = st.session_state.active_pipeline_id
-            st.session_state.messages = []  # Clear chat history when pipeline changes
+            try:
+                st.session_state.current_pipeline_id = st.session_state.active_pipeline_id
+                st.session_state.messages = []
+                if st.session_state.debug_mode:
+                    st.info(f"Switched to pipeline: {st.session_state.current_pipeline_id}")
+            except Exception as e:
+                st.error(f"Error changing pipeline: {str(e)}")
 
         active_pipeline_id = st.text_input(
             "Enter Pipeline ID for Chat:",
@@ -199,20 +233,42 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
 
         # System Information
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+        # st.markdown('<div class="info-box">', unsafe_allow_html=True)
         st.subheader("System Information")
         st.info("Using Llama Model for RAG")
         st.progress(100, "System Ready")
         if st.session_state.current_pipeline_id:
             st.success(f"Active Pipeline: {st.session_state.current_pipeline_id}")
+        
+        if st.session_state.debug_mode:
+            st.markdown("### Debug Information")
+            st.code(f"""
+Current Pipeline ID: {st.session_state.current_pipeline_id}
+Messages Count: {len(st.session_state.messages)}
+System Status: Active
+            """)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Chat messages display
     with col1:
-        # Chat Interface
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        chat_interface()
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+                if message.get("sources"):
+                    with st.expander("Sources"):
+                        for idx, source in enumerate(message["sources"], 1):
+                            st.markdown(f"**Source {idx}:**\n{source}")
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Chat input - Placed at the top level
+    prompt = st.chat_input("Ask your question...")
+    if prompt:
+        handle_chat(prompt)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        st.error(f"Application error: {str(e)}")
+        logging.error(f"Application error: {str(e)}\n{traceback.format_exc()}")

@@ -18,8 +18,8 @@ def get_requirements(file_path):
 setup(
     name="rag_builder",
     version="0.0.1",
-    author="rishi",
-    author_email="mrishe6@gmail.com",
+    author="yaseen",
+    author_email="yaseenmohammadap37@gmail.com",
     packages=find_packages(),
     install_requires = get_requirements('requirements.txt')
 
