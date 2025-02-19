@@ -16,7 +16,7 @@ from src.components.database import DataBase
 @dataclass
 class TrainConfig:
     key_path: str = os.path.join(
-        os.getcwd(), "artifacts", "keys.txt"
+        os.getcwd(),"RAG_BUILDER", "artifacts", "keys.txt"
     )
     search_kwargs = {"k": 2}
     verbose: bool = True
@@ -91,7 +91,7 @@ class Pipeline:
 
             # Persist pipeline ID
             with open(self.train_config.key_path, "a") as file_key:
-                file_key.write(f"{pipeline_id}\n")
+                file_key.write(f"\n{pipeline_id}\n")
 
             logging.info(f"Successfully created pipeline {pipeline_id}")
             return 1

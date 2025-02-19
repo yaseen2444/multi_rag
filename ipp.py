@@ -18,19 +18,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Enhanced Custom CSS with improved chat interface
 st.markdown("""
     <style>
+        /* Button Styles */
         .stButton>button {
             width: 100%;
             border-radius: 5px;
             height: 3em;
             transition: all 0.3s ease;
+            background-color: #1565C0;
+            color: white;
         }
         .stButton>button:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background-color: #1976D2;
         }
+        
+        /* Message Styles */
         .success-message {
             padding: 1rem;
             border-radius: 5px;
@@ -45,25 +51,55 @@ st.markdown("""
             color: #721C24;
             margin: 1rem 0;
         }
+        
+        /* Container Styles */
         .info-box {
             background-color: #f0f2f6;
             padding: 20px;
             border-radius: 10px;
             margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+        
+        /* Header Styles */
         .centered-header {
             text-align: center;
             padding: 20px;
-            background: linear-gradient(90deg, #EEF2F7, #1565C0);
+            background: linear-gradient(90deg, #1E88E5, #1565C0);
             color: white;
             border-radius: 10px;
             margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        
+        /* Chat Container Styles */
         .chat-container {
             margin-bottom: 60px;
             height: calc(100vh - 300px);
             overflow-y: auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+        
+        /* Chat Message Styles */
+        .chat-message {
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 15px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #E3F2FD;
+            margin-left: auto;
+        }
+        .assistant-message {
+            background-color: #F5F5F5;
+            margin-right: auto;
+        }
+        
+        /* Debug Info Styles */
         .debug-info {
             background-color: #f8f9fa;
             padding: 10px;
@@ -71,6 +107,21 @@ st.markdown("""
             margin: 5px 0;
             font-family: monospace;
             font-size: 12px;
+        }
+        
+        /* Source Expander Styles */
+        .source-expander {
+            margin-top: 5px;
+            padding: 10px;
+            background-color: #F8F9FA;
+            border-radius: 5px;
+        }
+        
+        /* Chat Input Styles */
+        .stTextInput>div>div>input {
+            border-radius: 20px;
+            padding: 10px 20px;
+            border: 2px solid #1565C0;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -109,7 +160,7 @@ def process_document(uploaded_file, pipeline_id, action):
         raise CustomException(e, sys)
 
 def handle_chat(prompt):
-    """Handle chat message processing."""
+    """Handle chat message processing with enhanced error handling and debug info."""
     try:
         logging.info(f"Processing chat prompt: {prompt}")
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -121,11 +172,10 @@ def handle_chat(prompt):
             })
             return
 
-        with st.spinner("Processing your question..."):
-            # Add debug information
+        with st.spinner("💭 Thinking..."):
             if st.session_state.debug_mode:
-                st.info(f"Sending query to pipeline {st.session_state.current_pipeline_id}")
-                
+                st.info(f"Querying pipeline {st.session_state.current_pipeline_id}")
+            
             response = predict_pipeline.query_pipeline(int(st.session_state.current_pipeline_id), prompt)
             
             if response == -1:
@@ -139,7 +189,7 @@ def handle_chat(prompt):
                     "content": response["answer"],
                     "sources": response.get("sources", [])
                 })
-                
+            
             logging.info("Chat response processed successfully")
             
     except Exception as e:
@@ -158,8 +208,9 @@ def main():
         st.error(f"Failed to initialize the application: {initialization_error}")
         return
 
-    # Debug mode toggle in sidebar
+    # Sidebar
     with st.sidebar:
+        # Debug Mode Toggle
         st.session_state.debug_mode = st.checkbox("Debug Mode", value=st.session_state.debug_mode)
         st.divider()
 
@@ -212,9 +263,22 @@ def main():
     # Main content area
     col1, col2 = st.columns([2, 1])
 
+    # Chat Interface (Left Column)
+    with col1:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+                if message.get("sources"):
+                    with st.expander("📚 Sources", expanded=False):
+                        for idx, source in enumerate(message["sources"], 1):
+                            st.markdown(f"**Source {idx}:**\n{source}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # System Info (Right Column)
     with col2:
         # st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.subheader("Active Pipeline")
+        st.subheader("🎯 Active Pipeline")
 
         def on_pipeline_change():
             try:
@@ -230,40 +294,26 @@ def main():
             key="active_pipeline_id",
             on_change=on_pipeline_change
         )
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        # System Information
-        # st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.subheader("System Information")
-        st.info("Using Llama Model for RAG")
-        st.progress(100, "System Ready")
+        # System Status
+        st.subheader("⚙️ System Status")
+        st.info("🦙 Using Llama Model for RAG")
+        st.progress(100, "✅ System Ready")
+        
         if st.session_state.current_pipeline_id:
-            st.success(f"Active Pipeline: {st.session_state.current_pipeline_id}")
+            st.success(f"🔗 Active Pipeline: {st.session_state.current_pipeline_id}")
         
         if st.session_state.debug_mode:
-            st.markdown("### Debug Information")
+            st.markdown("🔍 **Debug Information**")
             st.code(f"""
-Current Pipeline ID: {st.session_state.current_pipeline_id}
-Messages Count: {len(st.session_state.messages)}
-System Status: Active
+Pipeline ID: {st.session_state.current_pipeline_id}
+Messages: {len(st.session_state.messages)}
+Status: Active
             """)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Chat messages display
-    with col1:
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-                if message.get("sources"):
-                    with st.expander("Sources"):
-                        for idx, source in enumerate(message["sources"], 1):
-                            st.markdown(f"**Source {idx}:**\n{source}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Chat input - Placed at the top level
-    prompt = st.chat_input("Ask your question...")
-    if prompt:
+    # Chat input
+    if prompt := st.chat_input("💭 Ask your question..."):
         handle_chat(prompt)
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from typing import List, Optional
 
 @dataclass
 class DataIngestionConfig:
-    base_path: str = os.path.join("artifacts", "ingestion")
+    base_path: str = os.path.join("RAG_BUILDER","artifacts", "ingestion")
     max_files: int = 1000  # Increased from default 5
     batch_size: int = 50   # Process files in batches
     

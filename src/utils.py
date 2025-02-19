@@ -2,7 +2,7 @@ import os
 import sys
 from src.logger import logging
 from src.exception import CustomException
-KEYS_FILE=os.path.join('artifacts','keys.txt')
+KEYS_FILE=os.path.join("RAG_BUILDER",'artifacts','keys.txt')
 
 def validate_file_path(file_path: str) -> bool:
     """
