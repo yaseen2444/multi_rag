@@ -9,7 +9,7 @@ from src.logger import logging
 from src.exception import CustomException
 
 # Set up authentication with Hugging Face
-hugging_face_token = "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"
+hugging_face_token = "enter your key"
 login(token=hugging_face_token)
 
 @dataclass
